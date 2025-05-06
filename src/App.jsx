@@ -8,6 +8,7 @@ import ManageUser from "./pages/ManageUser";
 import Record from "./pages/Record";
 import Report from "./pages/Reports";
 import RequestMedicine from "./pages/RequestMedicine";
+import ForgotPassword from "./pages/ForgotPassword";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="register" element={<Register />} />
+        <Route path="forgotpassword" element={<ForgotPassword />} />
         <Route path="sidebar" element={<Sidebar />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="inventory" element={<Inventory />} />
