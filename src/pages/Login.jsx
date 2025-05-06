@@ -163,7 +163,7 @@ function Login() {
               )}
             </span>
           </div>
-          <Link to="/register" className="forgotPassword">
+          <Link to="/forgotpassword" className="forgotPassword">
             Forgot password?
           </Link>
           <Link to="/register" className="forgotPassword">
