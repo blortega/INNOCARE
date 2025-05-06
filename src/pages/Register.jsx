@@ -49,107 +49,108 @@ const Register = () => {
   };
 
   return (
-    <div className="register-container">
-      <div className="register-header">
-  <button className="back-btn" onClick={() => navigate("/")}>
-    ← Back
-  </button>
-  <h2 className="register-title">Create an Account</h2>
-</div>
+    <div className="register-page">
+      <div className="register-container">
+        <div className="register-header">
+          <button className="back-btn" onClick={() => navigate("/")}>
+            ← Back
+          </button>
+          <h2 className="register-title">Create an Account</h2>
+        </div>
 
-{error && <p className="error-message">{error}</p>}
+        {error && <p className="error-message">{error}</p>}
 
-      {error && <p className="error-message">{error}</p>}
-      <form className="register-form" onSubmit={(e) => e.preventDefault()}>
-        <div className="form-group">
-          <input
-            type="text"
-            placeholder="First Name"
-            value={firstname}
-            onChange={(e) => setFirstname(e.target.value)}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <input
-            type="text"
-            placeholder="Last Name"
-            value={lastname}
-            onChange={(e) => setLastname(e.target.value)}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <input
-            type="text"
-            placeholder="Phone Number"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <input
-            type="text"
-            placeholder="Employee ID"
-            value={employeeID}
-            onChange={(e) => setEmployeeID(e.target.value)}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <input
-            type="text"
-            placeholder="Department"
-            value={department}
-            onChange={(e) => setDepartment(e.target.value)}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <select
-            value={gender}
-            onChange={(e) => setGender(e.target.value)}
-            required
-          >
-            <option value="">Select Gender</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-        <div className="form-group">
-          <select disabled value="Admin">
-            <option>Admin</option>
-          </select>
-        </div>
-        <div className="form-group">
-          <select disabled value={status}>
-            <option>Active</option>
-          </select>
-        </div>
-        <button className="register-btn" onClick={handleRegister}>
-          Register
-        </button>
-      </form>
+        <form className="register-form" onSubmit={(e) => e.preventDefault()}>
+          <div className="form-group">
+            <input
+              type="text"
+              placeholder="First Name"
+              value={firstname}
+              onChange={(e) => setFirstname(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <input
+              type="text"
+              placeholder="Last Name"
+              value={lastname}
+              onChange={(e) => setLastname(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <input
+              type="text"
+              placeholder="Phone Number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <input
+              type="text"
+              placeholder="Employee ID"
+              value={employeeID}
+              onChange={(e) => setEmployeeID(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <input
+              type="text"
+              placeholder="Department"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <select
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+              required
+            >
+              <option value="">Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <select disabled value="Admin">
+              <option>Admin</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <select disabled value={status}>
+              <option>Active</option>
+            </select>
+          </div>
+          <button className="register-btn" onClick={handleRegister}>
+            Register
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

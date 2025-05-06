@@ -47,7 +47,7 @@ const formatDate = (date) => {
 
 const Inventory = () => {
   const [medicines, setMedicines] = useState([]);
-  const {complaints, loading, refetchComplaints } = FetchComplaints();
+  const { complaints, loading, refetchComplaints } = FetchComplaints();
   const [search, setSearch] = useState("");
   const [isComplaintModalOpen, setIsComplaintModalOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -110,15 +110,16 @@ const Inventory = () => {
       medicationString,
       medicine.status,
       medicine.expiryDate ? medicine.expiryDate.toString() : "",
-      medicine.expiryDate ? 
-    (medicine.expiryDate.seconds ? 
-      new Date(medicine.expiryDate.seconds * 1000) : 
-      new Date(medicine.expiryDate)
-    ).toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric",
-      day: "numeric"
-    }) : "",
+      medicine.expiryDate
+        ? (medicine.expiryDate.seconds
+            ? new Date(medicine.expiryDate.seconds * 1000)
+            : new Date(medicine.expiryDate)
+          ).toLocaleDateString("en-US", {
+            month: "long",
+            year: "numeric",
+            day: "numeric",
+          })
+        : "",
       medicine.createdAt
         ? medicine.createdAt.toDate().toLocaleDateString("en-US", {
             month: "long",
@@ -136,7 +137,7 @@ const Inventory = () => {
   const handleAddMedicine = async (newMedicine) => {
     try {
       console.log("adding medicine:", newMedicine);
-  
+
       const db = getFirestore(app);
       const { medication = [], ...medicineData } = newMedicine;
       console.log("newMedicine.medication:", medication);
@@ -148,21 +149,22 @@ const Inventory = () => {
         updatedAt: serverTimestamp(),
         expiryDate: newMedicine.expiryDate || "",
       });
-  
+
       console.log("Document added with ID:", docRef.id);
-  
+
       // ✅ Check and add new complaints to the 'complaints' collection
       const complaintsRef = collection(db, "complaints");
       const existingComplaintsSnap = await getDocs(complaintsRef);
-      const existingComplaintNames = existingComplaintsSnap.docs.map(doc => doc.data().name);
+      const existingComplaintNames = existingComplaintsSnap.docs.map(
+        (doc) => doc.data().name
+      );
       console.log("existingComplaintNames:", existingComplaintNames);
-      const newComplaints = medication.filter(name => !existingComplaintNames.includes(name));
+      const newComplaints = medication.filter(
+        (name) => !existingComplaintNames.includes(name)
+      );
 
-      
-      
       console.log("New Complaints to Add:", newComplaints);
 
-  
       for (const complaint of newComplaints) {
         await addDoc(complaintsRef, {
           name: complaint,
@@ -170,7 +172,7 @@ const Inventory = () => {
           createdAt: serverTimestamp(),
         });
       }
-  
+
       // ✅ Fetch and update local state
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
@@ -184,22 +186,21 @@ const Inventory = () => {
       toast.error("Failed to add medicine!");
       console.error("Error adding medicine:", error);
     }
-  
+
     fetchMedicines();
   };
-  
 
   const handleAddComplaint = async (complaintText, selectedMedicineId) => {
     try {
       const db = getFirestore(app);
-  
+
       // 1. Find the selected medicine object
       const selectedMed = medicines.find((m) => m.id === selectedMedicineId);
       if (!selectedMed) {
         toast.error("Selected medicine not found.");
         return;
       }
-  
+
       // 2. Store complaint with proper medicineName
       const complaintsRef = collection(db, "complaints");
       await addDoc(complaintsRef, {
@@ -207,31 +208,28 @@ const Inventory = () => {
         medicineName: selectedMed.name, // ✅ store actual medicine name
         createdAt: serverTimestamp(),
       });
-  
+
       // 3. Update the medicine document to include the complaint name, not the ID
       const medicineRef = doc(db, "medicine", selectedMedicineId);
-      const updatedMedication = [...(selectedMed.medication || []), complaintText]; // ✅ store complaint name, not ID
-  
+      const updatedMedication = [
+        ...(selectedMed.medication || []),
+        complaintText,
+      ]; // ✅ store complaint name, not ID
+
       await updateDoc(medicineRef, {
         medication: updatedMedication,
       });
-  
+
       toast.success("Complaint added and medicine updated!");
-  
+
       // 4. Refresh complaints and medicines
       await refetchComplaints();
       fetchMedicines(); // You already have this defined
-  
     } catch (err) {
       toast.error("Failed to add complaint");
       console.error("Error adding complaint: ", err);
     }
   };
-  
-
-  
-  
-  
 
   const getStockStatus = (stock) => {
     console.log("Stock value:", stock); // Add this line to check the value of stock
@@ -321,7 +319,7 @@ const Inventory = () => {
   const handleUpdate = (updatedMedicine) => {
     setMedicines((prevMedicines) =>
       prevMedicines.map((medicine) =>
-        medicine.id === updatedMedicine.id ? updatedMedicine : medicine,
+        medicine.id === updatedMedicine.id ? updatedMedicine : medicine
       )
     );
     fetchMedicines();
@@ -388,18 +386,18 @@ const Inventory = () => {
       <div style={styles.container}>
         <ToastContainer position="top-right" autoClose={2000} />
         <div style={styles.dashboardContainer}>
-  <div style={styles.dashboardHeader}>
-    <h1 style={styles.dashboardTitle}>Inventory Page</h1>
-    <p style={styles.dashboardDate}>
-      {new Date().toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })}
-    </p>
-  </div>
-</div>
+          <div style={styles.dashboardHeader}>
+            <h1 style={styles.dashboardTitle}>Inventory Page</h1>
+            <p style={styles.dashboardDate}>
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </p>
+          </div>
+        </div>
         {/* Add Medicine Button */}
         <div style={styles.searchContainer}>
           <input
@@ -464,7 +462,7 @@ const Inventory = () => {
         {isComplaintModalOpen && (
           <AddComplaints
             onClose={() => setIsComplaintModalOpen(false)} // Close the modal
-            onAddComplaint= {handleAddComplaint}
+            onAddComplaint={handleAddComplaint}
             medicines={medicines} // Pass the handler
           />
         )}
@@ -736,30 +734,30 @@ const styles = {
     padding: "24px",
     textAlign: "center",
     backgroundColor: "#f8fafc",
-    minHeight: '100vh',
+    minHeight: "100vh",
   },
   text: {
     color: "#2563eb",
     fontSize: "45px",
   },
   dashboardHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '24px',
-    paddingBottom: '12px',
-    borderBottom: '1px solid #e0e4e8',
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "24px",
+    paddingBottom: "12px",
+    borderBottom: "1px solid #e0e4e8",
   },
   dashboardTitle: {
-    fontSize: '24px',
+    fontSize: "24px",
     fontWeight: 600,
-    color: '#2563eb',
+    color: "#2563eb",
     margin: 0,
   },
   dashboardDate: {
-    color: '#7f8c8d',
-    fontSize: '14px',
-    fontWeight: 'bold',
+    color: "#7f8c8d",
+    fontSize: "14px",
+    fontWeight: "bold",
     margin: 0,
   },
   searchContainer: {
