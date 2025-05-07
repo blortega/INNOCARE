@@ -17,6 +17,7 @@ import { collection, getDocs, getFirestore } from "firebase/firestore";
 import Sidebar from "../components/Sidebar";
 import "../styles/Dashboard.css";
 import InventoryAlert from "../components/InventoryAlert";
+import AgeBracketChart from "../components/AgeBracketChart";
 
 const GENDER_COLORS = ["#0088FE", "#FF69B4"];
 const CONDITION_COLORS = [
@@ -617,6 +618,8 @@ const Dashboard = () => {
             colors={FEMALE_COLORS}
             icon="♀️"
           />
+
+          <AgeBracketChart />
         </div>
       </div>
     </Sidebar>
