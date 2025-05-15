@@ -50,6 +50,12 @@ const sidebarLinks = [
     guestAccess: false,
   },
   {
+    to: "/thirdpartyrecord",
+    icon: <FiFileText />,
+    label: "Third Party Records",
+    guestAccess: false,
+  },
+  {
     to: "/requestmedicine",
     icon: <FiShoppingCart />,
     label: "Request Medicine",
