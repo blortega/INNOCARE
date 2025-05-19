@@ -9,6 +9,7 @@ import Record from "./pages/Record";
 import Report from "./pages/Reports";
 import RequestMedicine from "./pages/RequestMedicine";
 import ForgotPassword from "./pages/ForgotPassword";
+import ThirdPartyRecord from "./pages/ThirdPartyRecord";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="inventory" element={<Inventory />} />
         <Route path="manage-user" element={<ManageUser />} />
         <Route path="records" element={<Record />} />
+        <Route path="thirdpartyrecord" element={<ThirdPartyRecord />} />
         <Route path="requestmedicine" element={<RequestMedicine />} />
         <Route path="reports" element={<Report />} />
         ``

@@ -12,6 +12,7 @@ import {
   serverTimestamp,
   orderBy,
   limit,
+  setDoc,
 } from "firebase/firestore";
 import Sidebar from "../components/Sidebar";
 import { db } from "../firebase";
@@ -40,6 +41,7 @@ const RequestMedicine = () => {
   const [lastVisitInfo, setLastVisitInfo] = useState(null);
   const [hoveredInput, setHoveredInput] = useState(null);
   const [focusedInput, setFocusedInput] = useState(null);
+  const [isThirdParty, setIsThirdParty] = useState(false);
 
   // User cache for reducing employee ID lookups
   const [userCache, setUserCache] = useState({});
@@ -249,7 +251,7 @@ const RequestMedicine = () => {
         return;
       }
 
-      // If not in cache, fetch from Firestore
+      // If not in cache, first check regular users
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("employeeID", "==", employeeID));
       const querySnapshot = await getDocs(q);
@@ -263,15 +265,37 @@ const RequestMedicine = () => {
         setIsScannedUser(true);
         setUserCache((prev) => ({ ...prev, [employeeID]: userData }));
         saveToCache(`user_${employeeID}`, userData);
+        setIsThirdParty(false); // Not a third-party user
 
         // Fetch last visit data
         await fetchLastVisitInfo(employeeID);
 
         toast.success("Employee found!");
       } else {
-        setUserData((prev) => ({ ...prev, employeeID }));
-        setIsScannedUser(false);
-        toast.error("No user found with this Employee ID");
+        // If not found in regular users, check third-party users
+        const thirdPartyRef = doc(db, "thirdpartyusers", employeeID);
+        const thirdPartyDoc = await getDoc(thirdPartyRef);
+
+        if (thirdPartyDoc.exists()) {
+          const thirdPartyData = thirdPartyDoc.data();
+
+          // Update caches
+          setUserData({ ...thirdPartyData });
+          setIsScannedUser(true);
+          setUserCache((prev) => ({ ...prev, [employeeID]: thirdPartyData }));
+          saveToCache(`user_${employeeID}`, thirdPartyData);
+          setIsThirdParty(true); // Set as third-party user
+
+          // Fetch last visit data
+          await fetchLastVisitInfo(employeeID);
+
+          toast.success("Third-party user found!");
+        } else {
+          setUserData((prev) => ({ ...prev, employeeID }));
+          setIsScannedUser(false);
+          setIsThirdParty(false);
+          toast.error("No user found with this Employee ID");
+        }
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -471,6 +495,43 @@ const RequestMedicine = () => {
         return;
       }
 
+      // Save third-party user data if checkbox is checked
+      if (isThirdParty) {
+        try {
+          const thirdPartyData = {
+            employeeID: userData.employeeID.trim(),
+            firstname: userData.firstname || "",
+            lastname: userData.lastname || "",
+            middleInitial: userData.middleInitial || "",
+            gender: userData.gender || "",
+            department: userData.department || "",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          };
+
+          console.log("Saving third party user:", thirdPartyData);
+
+          const thirdPartyDocRef = doc(
+            db,
+            "thirdpartyusers",
+            userData.employeeID.trim()
+          );
+          await setDoc(thirdPartyDocRef, thirdPartyData, { merge: true });
+
+          setUserCache((prev) => ({
+            ...prev,
+            [userData.employeeID]: thirdPartyData,
+          }));
+
+          saveToCache(`user_${userData.employeeID}`, thirdPartyData);
+
+          toast.success("Third-party user data saved successfully!");
+        } catch (error) {
+          console.error("Error saving third-party user:", error);
+          toast.error(`Error saving third-party user: ${error.message}`);
+        }
+      }
+
       const selectedMedicine = filteredMedicines.find(
         (med) => med.name === medicine
       );
@@ -535,7 +596,7 @@ const RequestMedicine = () => {
       // Start a batch
       const batch = writeBatch(db);
 
-      // Create medicine request data
+      // Create the request data - same for both regular and third-party
       const requestData = {
         employeeID: employeeID,
         firstname: userData.firstname,
@@ -550,12 +611,22 @@ const RequestMedicine = () => {
         dateVisit: serverTimestamp(),
       };
 
-      // Add medicine request
-      const medicineRequestRef = collection(db, "medicineRequests");
-      const newRequestRef = doc(medicineRequestRef);
-      batch.set(newRequestRef, requestData);
+      // Add request to the appropriate collection based on third-party status
+      if (isThirdParty) {
+        // Add to thirdpartyRequests collection
+        const thirdPartyRequestRef = collection(db, "thirdpartyRequests");
+        const newThirdPartyRequestRef = doc(thirdPartyRequestRef);
+        batch.set(newThirdPartyRequestRef, requestData);
+        console.log("Saving to thirdpartyRequests collection");
+      } else {
+        // Add to regular medicineRequests collection
+        const medicineRequestRef = collection(db, "medicineRequests");
+        const newRequestRef = doc(medicineRequestRef);
+        batch.set(newRequestRef, requestData);
+        console.log("Saving to medicineRequests collection");
+      }
 
-      // Update medicine stock
+      // Update medicine stock (same for both types of requests)
       const newStock = currentMedicineData.stock - quantityDispensed;
       let newStatus = currentMedicineData.status;
 
@@ -592,7 +663,11 @@ const RequestMedicine = () => {
         return updatedMedicines;
       });
 
-      toast.success("Medicine request submitted successfully!");
+      toast.success(
+        `${
+          isThirdParty ? "Third-party" : "Medicine"
+        } request submitted successfully!`
+      );
 
       // Refetch last visit info to show the new request
       await fetchLastVisitInfo(scannedData);
@@ -605,8 +680,12 @@ const RequestMedicine = () => {
         setIsScannerActive(false);
       }, 5000);
     } catch (error) {
-      console.error("Error saving medicine request:", error);
-      toast.error("Error submitting request. Please try again.");
+      console.error("Error saving request:", error);
+      toast.error(
+        `Error submitting ${
+          isThirdParty ? "third-party" : "medicine"
+        } request. Please try again.`
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -625,6 +704,7 @@ const RequestMedicine = () => {
     setUserData(null);
     setScannedData("");
     setIsScannedUser(false);
+    setIsThirdParty(false);
     setComplaint("");
     setMedicine("");
     setLastVisitInfo(null);
@@ -909,6 +989,22 @@ const RequestMedicine = () => {
                         />
                       </div>
                     </div>
+                  </div>
+
+                  <div style={styles.thirdPartyCheckbox}>
+                    <input
+                      type="checkbox"
+                      id="thirdPartyCheck"
+                      checked={isThirdParty}
+                      onChange={(e) => setIsThirdParty(e.target.checked)}
+                      style={styles.checkbox}
+                    />
+                    <label
+                      htmlFor="thirdPartyCheck"
+                      style={styles.checkboxLabel}
+                    >
+                      Third-Party User
+                    </label>
                   </div>
 
                   {/* Last Visit Information Section */}
@@ -1529,6 +1625,24 @@ const styles = {
     display: "flex",
     alignItems: "center",
     fontSize: "14px",
+  },
+  thirdPartyCheckbox: {
+    marginTop: "15px",
+    marginBottom: "10px",
+    display: "flex",
+    alignItems: "center",
+  },
+  checkbox: {
+    marginRight: "8px",
+    width: "16px",
+    height: "16px",
+    cursor: "pointer",
+  },
+  checkboxLabel: {
+    fontSize: "14px",
+    fontWeight: "500",
+    color: "#4b5563",
+    cursor: "pointer",
   },
   "@keyframes spin": {
     "0%": { transform: "rotate(0deg)" },

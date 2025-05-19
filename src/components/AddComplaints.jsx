@@ -3,22 +3,42 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 
-const AddComplaints = ({ onClose, onAddComplaint, medicines }) => {
+const AddComplaints = ({ onClose, onAddComplaint, medicines, existingComplaints }) => {
   const [complaintText, setComplaintText] = useState("");
   const [selectedMedicine, setSelectedMedicine] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    if (!complaintText || !selectedMedicine) {
-        toast.error("Please fill in all fields.");
-        return;
-      }
-  
-      setIsSubmitting(true);
-      await onAddComplaint(complaintText, selectedMedicine);
-      setIsSubmitting(false);
-      onClose();
-    };
+  if (!complaintText || !selectedMedicine) {
+    toast.error("Please fill in all fields.");
+    return;
+  }
+
+  if (!Array.isArray(existingComplaints)) {
+    toast.error("Complaint data is not ready yet.");
+    return;
+  }
+
+  const exists = existingComplaints.some((c) => {
+    const existingText = (c.complaintText || c.complaint || "").toLowerCase().trim();
+    const currentText = complaintText.toLowerCase().trim();
+    const existingMedId = String(c.medicineId || c.medicine || "");
+    const selectedMedId = String(selectedMedicine);
+
+    return existingText === currentText && existingMedId === selectedMedId;
+  });
+
+  if (exists) {
+    toast.error("This complaint for the selected medicine already exists.");
+    return; // stop here, don’t add duplicate
+  }
+
+  setIsSubmitting(true);
+  await onAddComplaint(complaintText, selectedMedicine);
+  setIsSubmitting(false);
+  onClose();
+};
+
 
   return (
     <div style={styles.modalOverlay}>
