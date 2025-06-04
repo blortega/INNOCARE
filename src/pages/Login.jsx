@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ladydoctor from "../assets/nurse-removebg-preview.png";
 import doctorpatient from "../assets/doctor-patient-vector.png";
-import "../styles/Login.css"; // Import the external stylesheet
+import "../styles/Login.css";
 
 function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -15,8 +15,36 @@ function Login() {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
+  // Clear any existing sessions when Login component mounts
+  useEffect(() => {
+    const clearExistingSessions = async () => {
+      // Clear any stored session data
+      sessionStorage.removeItem("userData");
+
+      // Sign out any existing Firebase user
+      if (auth.currentUser) {
+        try {
+          await signOut(auth);
+          console.log("Existing Firebase session cleared");
+        } catch (error) {
+          console.error("Error signing out existing user:", error);
+        }
+      }
+    };
+
+    clearExistingSessions();
+  }, []);
+
   const handleLogin = async () => {
     try {
+      // Make sure we're starting fresh - sign out first
+      if (auth.currentUser) {
+        await signOut(auth);
+      }
+
+      // Clear any guest session data
+      sessionStorage.removeItem("userData");
+
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
@@ -29,7 +57,8 @@ function Login() {
 
       if (userDoc.exists()) {
         console.log("User details:", userDoc.data());
-        navigate("/dashboard"); // Redirect to dashboard
+        // Don't store in sessionStorage here - let the Sidebar component handle it
+        navigate("/dashboard");
       } else {
         toast.error("User record not found. Please contact support.");
       }
@@ -39,17 +68,31 @@ function Login() {
   };
 
   // Handle guest login
-  const handleGuestLogin = () => {
-    const guestUserData = {
-      firstname: "Guest",
-      email: "guest@guest.com",
-      role: "guest",
-      isGuest: true,
-    };
+  const handleGuestLogin = async () => {
+    try {
+      // CRITICAL: Sign out any Firebase user first
+      if (auth.currentUser) {
+        await signOut(auth);
+        console.log("Firebase user signed out before guest login");
+      }
 
-    // Change from localStorage to sessionStorage
-    sessionStorage.setItem("userData", JSON.stringify(guestUserData));
-    navigate("/requestmedicine");
+      const guestUserData = {
+        firstname: "Guest",
+        email: "guest@guest.com",
+        role: "guest",
+        isGuest: true,
+      };
+
+      // Clear any existing data and set guest data
+      sessionStorage.removeItem("userData");
+      sessionStorage.setItem("userData", JSON.stringify(guestUserData));
+
+      console.log("Guest session created");
+      navigate("/requestmedicine");
+    } catch (error) {
+      console.error("Error during guest login:", error);
+      toast.error("Failed to start guest session");
+    }
   };
 
   return (
