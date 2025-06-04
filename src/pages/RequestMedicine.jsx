@@ -222,7 +222,7 @@ const RequestMedicine = () => {
     return null;
   };
 
-  // Check user cache before fetching from Firestore
+  // Check user cache before fet ching from Firestore
   const fetchUserData = async (employeeID) => {
     setIsSearching(true);
 
