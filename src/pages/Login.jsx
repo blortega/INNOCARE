@@ -25,6 +25,7 @@ function Login() {
       if (auth.currentUser) {
         try {
           await signOut(auth);
+          console.log("Existing Firebase session cleared");
         } catch (error) {
           console.error("Error signing out existing user:", error);
         }
@@ -36,6 +37,14 @@ function Login() {
 
   const handleLogin = async () => {
     try {
+      // Make sure we're starting fresh - sign out first
+      if (auth.currentUser) {
+        await signOut(auth);
+      }
+
+      // Clear any guest session data
+      sessionStorage.removeItem("userData");
+
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
@@ -48,6 +57,7 @@ function Login() {
 
       if (userDoc.exists()) {
         console.log("User details:", userDoc.data());
+        // Don't store in sessionStorage here - let the Sidebar component handle it
         navigate("/dashboard");
       } else {
         toast.error("User record not found. Please contact support.");
@@ -58,17 +68,31 @@ function Login() {
   };
 
   // Handle guest login
-  const handleGuestLogin = () => {
-    const guestUserData = {
-      firstname: "Guest",
-      email: "guest@guest.com",
-      role: "guest",
-      isGuest: true,
-    };
+  const handleGuestLogin = async () => {
+    try {
+      // CRITICAL: Sign out any Firebase user first
+      if (auth.currentUser) {
+        await signOut(auth);
+        console.log("Firebase user signed out before guest login");
+      }
 
-    // Use sessionStorage instead of localStorage
-    sessionStorage.setItem("userData", JSON.stringify(guestUserData));
-    navigate("/requestmedicine");
+      const guestUserData = {
+        firstname: "Guest",
+        email: "guest@guest.com",
+        role: "guest",
+        isGuest: true,
+      };
+
+      // Clear any existing data and set guest data
+      sessionStorage.removeItem("userData");
+      sessionStorage.setItem("userData", JSON.stringify(guestUserData));
+
+      console.log("Guest session created");
+      navigate("/requestmedicine");
+    } catch (error) {
+      console.error("Error during guest login:", error);
+      toast.error("Failed to start guest session");
+    }
   };
 
   return (

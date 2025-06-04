@@ -21,7 +21,7 @@ import { auth } from "../firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
-import { RingLoader } from "react-spinners"; // Import a spinner component
+import { RingLoader } from "react-spinners";
 
 // Define the sidebar links with accessibility information
 const sidebarLinks = [
@@ -77,43 +77,60 @@ const Sidebar = ({ children }) => {
   const [userLoading, setUserLoading] = useState(true);
   const [hoveredItem, setHoveredItem] = useState("");
   const [hoveredLink, setHoveredLink] = useState("");
+  const [isGuest, setIsGuest] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
-  const [isGuest, setIsGuest] = useState(false);
 
+  // Check for existing guest session on mount
   useEffect(() => {
-    // Changed from localStorage to sessionStorage
     const storedUserData = sessionStorage.getItem("userData");
     if (storedUserData) {
       try {
         const parsedUserData = JSON.parse(storedUserData);
-        setUserData(parsedUserData);
-        setIsGuest(parsedUserData.isGuest === true);
+        if (parsedUserData.isGuest === true) {
+          setUserData(parsedUserData);
+          setIsGuest(true);
+          setUserLoading(false);
 
-        // If user is guest and not on request medicine page, redirect them
-        if (
-          parsedUserData.isGuest === true &&
-          window.location.pathname !== "/requestmedicine"
-        ) {
-          navigate("/requestmedicine");
+          // If user is guest and not on request medicine page, redirect them
+          if (window.location.pathname !== "/requestmedicine") {
+            navigate("/requestmedicine");
+          }
+          return; // Don't let Firebase auth override guest session
         }
       } catch (error) {
         console.error("Error parsing stored user data:", error);
+        sessionStorage.removeItem("userData");
       }
     }
   }, [navigate]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      // Check if we're in guest mode first - don't let Firebase override
+      const storedData = sessionStorage.getItem("userData");
+      if (storedData) {
+        try {
+          const parsedData = JSON.parse(storedData);
+          if (parsedData.isGuest === true) {
+            // We're in guest mode, ignore Firebase auth changes
+            console.log("Guest mode active, ignoring Firebase auth state");
+            return;
+          }
+        } catch (error) {
+          console.error("Error parsing session data:", error);
+        }
+      }
+
       if (user) {
         setUserLoading(true);
+        setIsGuest(false);
+
         try {
           const userDoc = await getDoc(doc(db, "users", user.uid));
           if (userDoc.exists()) {
             const userDataFromFirestore = userDoc.data();
             setUserData(userDataFromFirestore);
-            setIsGuest(false); // Regular authenticated user
-            // Changed from localStorage to sessionStorage
             sessionStorage.setItem(
               "userData",
               JSON.stringify(userDataFromFirestore)
@@ -126,7 +143,6 @@ const Sidebar = ({ children }) => {
               isGuest: false,
             };
             setUserData(basicUserData);
-            // Changed from localStorage to sessionStorage
             sessionStorage.setItem("userData", JSON.stringify(basicUserData));
           }
         } catch (error) {
@@ -137,26 +153,34 @@ const Sidebar = ({ children }) => {
             isGuest: false,
           };
           setUserData(basicUserData);
-          // Changed from localStorage to sessionStorage
           sessionStorage.setItem("userData", JSON.stringify(basicUserData));
         } finally {
           setUserLoading(false);
         }
       } else {
-        // Check if there's guest data in sessionStorage
+        // No Firebase user - check if we have guest data
         const storedData = sessionStorage.getItem("userData");
         if (storedData) {
-          const parsedData = JSON.parse(storedData);
-          if (parsedData.isGuest) {
-            setUserData(parsedData);
-            setIsGuest(true);
-          } else {
-            setUserData(null);
-            // Changed from localStorage to sessionStorage
+          try {
+            const parsedData = JSON.parse(storedData);
+            if (parsedData.isGuest) {
+              setUserData(parsedData);
+              setIsGuest(true);
+            } else {
+              // Clear non-guest data if no Firebase user
+              setUserData(null);
+              setIsGuest(false);
+              sessionStorage.removeItem("userData");
+            }
+          } catch (error) {
+            console.error("Error parsing session data:", error);
             sessionStorage.removeItem("userData");
+            setUserData(null);
+            setIsGuest(false);
           }
         } else {
           setUserData(null);
+          setIsGuest(false);
         }
         setUserLoading(false);
       }
@@ -165,31 +189,64 @@ const Sidebar = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  // Add session cleanup on browser close
+  // Enhanced session cleanup on browser close
   useEffect(() => {
     const handleBeforeUnload = () => {
       const userData = sessionStorage.getItem("userData");
       if (userData) {
-        const parsedData = JSON.parse(userData);
-        if (parsedData.isGuest) {
-          sessionStorage.removeItem("userData");
+        try {
+          const parsedData = JSON.parse(userData);
+          if (parsedData.isGuest) {
+            sessionStorage.removeItem("userData");
+          }
+        } catch (error) {
+          console.error("Error during cleanup:", error);
+        }
+      }
+    };
+
+    // Also handle visibility change for better mobile support
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        const userData = sessionStorage.getItem("userData");
+        if (userData) {
+          try {
+            const parsedData = JSON.parse(userData);
+            if (parsedData.isGuest) {
+              sessionStorage.removeItem("userData");
+            }
+          } catch (error) {
+            console.error("Error during visibility cleanup:", error);
+          }
         }
       }
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   const handleLogout = async () => {
     setLoading(true);
     try {
-      // Changed from localStorage to sessionStorage
+      // Clear session storage first
       sessionStorage.removeItem("userData");
+
       // If the user is logged in with Firebase, sign them out
-      if (auth.currentUser) {
+      if (auth.currentUser && !isGuest) {
         await signOut(auth);
+        console.log("Firebase user signed out");
       }
+
+      // Reset state
+      setUserData(null);
+      setIsGuest(false);
+
       navigate("/");
     } catch (error) {
       console.error("Logout error:", error);
@@ -217,6 +274,11 @@ const Sidebar = ({ children }) => {
       )}
     </div>
   );
+
+  // If no user data and not loading, redirect to login
+  if (!userLoading && !userData) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div style={styles.container}>
