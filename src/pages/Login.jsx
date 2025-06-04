@@ -40,17 +40,15 @@ function Login() {
 
   // Handle guest login
   const handleGuestLogin = () => {
-    // Set guest user data in localStorage
     const guestUserData = {
       firstname: "Guest",
       email: "guest@guest.com",
-      role: "guest", // Add role to identify guest users
+      role: "guest",
       isGuest: true,
     };
 
-    localStorage.setItem("userData", JSON.stringify(guestUserData));
-
-    // Navigate directly to request medicine page
+    // Change from localStorage to sessionStorage
+    sessionStorage.setItem("userData", JSON.stringify(guestUserData));
     navigate("/requestmedicine");
   };
 
