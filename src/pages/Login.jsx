@@ -1,19 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ladydoctor from "../assets/nurse-removebg-preview.png";
 import doctorpatient from "../assets/doctor-patient-vector.png";
-import "../styles/Login.css"; // Import the external stylesheet
+import "../styles/Login.css";
 
 function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+
+  // Clear any existing sessions when Login component mounts
+  useEffect(() => {
+    const clearExistingSessions = async () => {
+      // Clear any stored session data
+      sessionStorage.removeItem("userData");
+
+      // Sign out any existing Firebase user
+      if (auth.currentUser) {
+        try {
+          await signOut(auth);
+        } catch (error) {
+          console.error("Error signing out existing user:", error);
+        }
+      }
+    };
+
+    clearExistingSessions();
+  }, []);
 
   const handleLogin = async () => {
     try {
@@ -29,7 +48,7 @@ function Login() {
 
       if (userDoc.exists()) {
         console.log("User details:", userDoc.data());
-        navigate("/dashboard"); // Redirect to dashboard
+        navigate("/dashboard");
       } else {
         toast.error("User record not found. Please contact support.");
       }
@@ -47,7 +66,7 @@ function Login() {
       isGuest: true,
     };
 
-    // Change from localStorage to sessionStorage
+    // Use sessionStorage instead of localStorage
     sessionStorage.setItem("userData", JSON.stringify(guestUserData));
     navigate("/requestmedicine");
   };
