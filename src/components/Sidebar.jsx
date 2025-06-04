@@ -82,7 +82,8 @@ const Sidebar = ({ children }) => {
   const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
-    const storedUserData = localStorage.getItem("userData");
+    // Changed from localStorage to sessionStorage
+    const storedUserData = sessionStorage.getItem("userData");
     if (storedUserData) {
       try {
         const parsedUserData = JSON.parse(storedUserData);
@@ -112,7 +113,8 @@ const Sidebar = ({ children }) => {
             const userDataFromFirestore = userDoc.data();
             setUserData(userDataFromFirestore);
             setIsGuest(false); // Regular authenticated user
-            localStorage.setItem(
+            // Changed from localStorage to sessionStorage
+            sessionStorage.setItem(
               "userData",
               JSON.stringify(userDataFromFirestore)
             );
@@ -124,7 +126,8 @@ const Sidebar = ({ children }) => {
               isGuest: false,
             };
             setUserData(basicUserData);
-            localStorage.setItem("userData", JSON.stringify(basicUserData));
+            // Changed from localStorage to sessionStorage
+            sessionStorage.setItem("userData", JSON.stringify(basicUserData));
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
@@ -134,13 +137,14 @@ const Sidebar = ({ children }) => {
             isGuest: false,
           };
           setUserData(basicUserData);
-          localStorage.setItem("userData", JSON.stringify(basicUserData));
+          // Changed from localStorage to sessionStorage
+          sessionStorage.setItem("userData", JSON.stringify(basicUserData));
         } finally {
           setUserLoading(false);
         }
       } else {
-        // Check if there's guest data in localStorage
-        const storedData = localStorage.getItem("userData");
+        // Check if there's guest data in sessionStorage
+        const storedData = sessionStorage.getItem("userData");
         if (storedData) {
           const parsedData = JSON.parse(storedData);
           if (parsedData.isGuest) {
@@ -148,7 +152,8 @@ const Sidebar = ({ children }) => {
             setIsGuest(true);
           } else {
             setUserData(null);
-            localStorage.removeItem("userData");
+            // Changed from localStorage to sessionStorage
+            sessionStorage.removeItem("userData");
           }
         } else {
           setUserData(null);
@@ -160,10 +165,27 @@ const Sidebar = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
+  // Add session cleanup on browser close
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const userData = sessionStorage.getItem("userData");
+      if (userData) {
+        const parsedData = JSON.parse(userData);
+        if (parsedData.isGuest) {
+          sessionStorage.removeItem("userData");
+        }
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
   const handleLogout = async () => {
     setLoading(true);
     try {
-      localStorage.removeItem("userData");
+      // Changed from localStorage to sessionStorage
+      sessionStorage.removeItem("userData");
       // If the user is logged in with Firebase, sign them out
       if (auth.currentUser) {
         await signOut(auth);
