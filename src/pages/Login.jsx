@@ -104,7 +104,7 @@ function Login() {
 
       <div className="rightSection">
         <img src={ladydoctor} alt="Admin Illustration" className="loginImage" />
-        <h2 className="heading">Welcome Ma'am Amy!</h2>
+        <h2 className="heading">Welcome to Innocare!</h2>
         <p className="subText">Login to an Admin account to use the app</p>
 
         <div className="inputGroup">
