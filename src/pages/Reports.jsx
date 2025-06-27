@@ -7,10 +7,12 @@ import {
   User,
   UserPlus,
   Clock,
+  Printer,
 } from "lucide-react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import Sidebar from "../components/Sidebar";
+import logo from "../assets/innodatalogo.png"; // Add this import for your logo
 
 const Reports = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -22,6 +24,7 @@ const Reports = () => {
   const [femaleAgeBracketData, setFemaleAgeBracketData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isPrintHovered, setIsPrintHovered] = useState(false);
 
   // Process medicine request data
   const processMedicineRequests = (data) => {
@@ -303,69 +306,68 @@ const Reports = () => {
 
   // Function to export data as CSV
   const exportData = () => {
-    // Create CSV content for medicines
+    // Create CSV content
     let csvContent = "data:text/csv;charset=utf-8,";
+    
+    // Header with month and year
+    csvContent += `Medical Reports for the Month of ${monthNames[selectedMonth]} ${selectedYear}\r\n`;
+    csvContent += `Generated on: ${new Date().toLocaleDateString()}\r\n\r\n`;
 
-    // Medicine data
-    csvContent += "Medical Reports\r\n";
+    // Medicine data section
+    csvContent += "MEDICINE DISTRIBUTION\r\n";
     csvContent += "Medicine Name,Count\r\n";
     medicineData.forEach((item) => {
       csvContent += `${item.medicineName},${item.count}\r\n`;
     });
-    csvContent += `Total,${medicineData.reduce(
+    csvContent += `Total Medicines Distributed,${medicineData.reduce(
       (sum, item) => sum + item.count,
       0
     )}\r\n\r\n`;
 
-    // Male complaints
-    csvContent += "Male Complaints\r\n";
-    csvContent += "Complaint,Count\r\n";
-    maleComplaintsData.forEach((item) => {
-      csvContent += `${item.complaint},${item.count}\r\n`;
-    });
-    csvContent += `Total,${maleComplaintsData.reduce(
-      (sum, item) => sum + item.count,
-      0
-    )}\r\n\r\n`;
+    // Complaints section - Side by side layout
+    csvContent += "HEALTH COMPLAINTS BY GENDER\r\n";
+    csvContent += "Male Complaints,Count,Female Complaints,Count\r\n";
+    
+    // Get the maximum length to handle uneven arrays
+    const maxComplaintLength = Math.max(maleComplaintsData.length, femaleComplaintsData.length);
+    
+    for (let i = 0; i < maxComplaintLength; i++) {
+      const maleComplaint = maleComplaintsData[i] || { complaint: '', count: '' };
+      const femaleComplaint = femaleComplaintsData[i] || { complaint: '', count: '' };
+      csvContent += `${maleComplaint.complaint},${maleComplaint.count},${femaleComplaint.complaint},${femaleComplaint.count}\r\n`;
+    }
+    
+    // Totals for complaints
+    const maleComplaintsTotal = maleComplaintsData.reduce((sum, item) => sum + item.count, 0);
+    const femaleComplaintsTotal = femaleComplaintsData.reduce((sum, item) => sum + item.count, 0);
+    csvContent += `Total Male Complaints,${maleComplaintsTotal},Total Female Complaints,${femaleComplaintsTotal}\r\n\r\n`;
 
-    // Female complaints
-    csvContent += "Female Complaints\r\n";
-    csvContent += "Complaint,Count\r\n";
-    femaleComplaintsData.forEach((item) => {
-      csvContent += `${item.complaint},${item.count}\r\n`;
-    });
-    csvContent += `Total,${femaleComplaintsData.reduce(
-      (sum, item) => sum + item.count,
-      0
-    )}\r\n\r\n`;
+    // Age brackets section - Side by side layout
+    csvContent += "AGE DISTRIBUTION BY GENDER\r\n";
+    csvContent += "Male Age Range,Count,Female Age Range,Count\r\n";
+    
+    // Get the maximum length to handle uneven arrays
+    const maxAgeLength = Math.max(maleAgeBracketData.length, femaleAgeBracketData.length);
+    
+    for (let i = 0; i < maxAgeLength; i++) {
+      const maleAge = maleAgeBracketData[i] || { bracket: '', count: '' };
+      const femaleAge = femaleAgeBracketData[i] || { bracket: '', count: '' };
+      csvContent += `${maleAge.bracket},${maleAge.count},${femaleAge.bracket},${femaleAge.count}\r\n`;
+    }
+    
+    // Totals for age brackets
+    const maleTotal = maleAgeBracketData.reduce((sum, item) => sum + item.count, 0);
+    const femaleTotal = femaleAgeBracketData.reduce((sum, item) => sum + item.count, 0);
+    csvContent += `Total Males,${maleTotal},Total Females,${femaleTotal}\r\n\r\n`;
 
-    // Male Age brackets
-    csvContent += "Male Age Brackets\r\n";
-    csvContent += "Age Range,Count\r\n";
-    maleAgeBracketData.forEach((item) => {
-      csvContent += `${item.bracket},${item.count}\r\n`;
-    });
-    csvContent += `Total Males,${maleAgeBracketData.reduce(
-      (sum, item) => sum + item.count,
-      0
-    )}\r\n\r\n`;
-
-    // Female Age brackets
-    csvContent += "Female Age Brackets\r\n";
-    csvContent += "Age Range,Count\r\n";
-    femaleAgeBracketData.forEach((item) => {
-      csvContent += `${item.bracket},${item.count}\r\n`;
-    });
-    csvContent += `Total Females,${femaleAgeBracketData.reduce(
-      (sum, item) => sum + item.count,
-      0
-    )}\r\n\r\n`;
-
-    // Combined total
-    csvContent += `Total Users,${
-      maleAgeBracketData.reduce((sum, item) => sum + item.count, 0) +
-      femaleAgeBracketData.reduce((sum, item) => sum + item.count, 0)
-    }\r\n`;
+    // Summary section
+    csvContent += "SUMMARY\r\n";
+    csvContent += "Category,Count\r\n";
+    csvContent += `Total Male Patients,${maleTotal}\r\n`;
+    csvContent += `Total Female Patients,${femaleTotal}\r\n`;
+    csvContent += `Total Patients,${maleTotal + femaleTotal}\r\n`;
+    csvContent += `Total Medicines Distributed,${medicineData.reduce((sum, item) => sum + item.count, 0)}\r\n`;
+    csvContent += `Total Health Complaints,${maleComplaintsTotal + femaleComplaintsTotal}\r\n`;
 
     // Create download link
     const encodedUri = encodeURI(csvContent);
@@ -378,6 +380,352 @@ const Reports = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Function to handle printing
+  const handlePrint = () => {
+    // Create a new window for printing
+    const printWindow = window.open("", "_blank");
+
+    // Convert logo to base64 to use in the print window
+    const img = new Image();
+    img.src = logo;
+
+    img.onload = () => {
+      // Create a canvas element to draw the image
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+
+      // Get base64 representation of the image
+      const logoBase64 = canvas.toDataURL("image/png");
+
+      // Calculate totals
+      const totalMedicines = medicineData.reduce((sum, item) => sum + item.count, 0);
+      const totalMaleComplaints = maleComplaintsData.reduce((sum, item) => sum + item.count, 0);
+      const totalFemaleComplaints = femaleComplaintsData.reduce((sum, item) => sum + item.count, 0);
+      const totalMales = maleAgeBracketData.reduce((sum, item) => sum + item.count, 0);
+      const totalFemales = femaleAgeBracketData.reduce((sum, item) => sum + item.count, 0);
+
+      // Create title based on selected filters
+      const reportTitle = `Medical Reports - ${monthNames[selectedMonth]} ${selectedYear}`;
+
+      // Create a comprehensive HTML content for the print window
+      const printContent = `
+        <html>
+          <head>
+            <title>Print Medical Reports</title>
+            <style>
+              body { 
+                font-family: Arial, sans-serif; 
+                margin: 0;
+                padding: 20px;
+                font-size: 12px;
+              }
+              .header { 
+                display: flex; 
+                align-items: center; 
+                margin-bottom: 30px; 
+                border-bottom: 2px solid #3182ce;
+                padding-bottom: 15px;
+              }
+              .logo { 
+                height: 60px; 
+                margin-right: 20px; 
+              }
+              .header-text { 
+                flex: 1; 
+              }
+              .header-text h1 {
+                color: #3182ce;
+                margin: 0;
+                font-size: 24px;
+              }
+              .print-date { 
+                font-size: 12px; 
+                color: #666; 
+                margin-top: 5px; 
+              }
+              .section {
+                margin-bottom: 30px;
+                break-inside: avoid;
+              }
+              .section-title {
+                background-color: #3182ce;
+                color: white;
+                padding: 8px 12px;
+                margin-bottom: 10px;
+                font-weight: bold;
+                font-size: 14px;
+              }
+              .two-column {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin-bottom: 20px;
+              }
+              .three-column {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 20px;
+                margin-bottom: 20px;
+              }
+              table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                margin-bottom: 15px;
+              }
+              th, td { 
+                border: 1px solid #ddd; 
+                padding: 6px 8px; 
+                text-align: left; 
+                font-size: 11px;
+              }
+              th { 
+                background-color: #f8f9fa; 
+                font-weight: bold;
+              }
+              .total-row {
+                background-color: #e8f4f8;
+                font-weight: bold;
+              }
+              .summary-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 15px;
+                margin-top: 20px;
+              }
+              .summary-card {
+                background-color: #f8f9fa;
+                padding: 12px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                text-align: center;
+              }
+              .summary-card .number {
+                font-size: 18px;
+                font-weight: bold;
+                color: #3182ce;
+                display: block;
+              }
+              .summary-card .label {
+                font-size: 11px;
+                color: #666;
+                margin-top: 4px;
+              }
+              @media print {
+                .section {
+                  break-inside: avoid;
+                }
+                .header {
+                  break-after: avoid;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <img src="${logoBase64}" alt="Innodata Logo" class="logo">
+              <div class="header-text">
+                <h1>${reportTitle}</h1>
+                <p class="print-date">Generated on: ${new Date().toLocaleDateString(
+                  "en-US",
+                  {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }
+                )}</p>
+              </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="section">
+              <div class="section-title">Executive Summary</div>
+              <div class="summary-grid">
+                <div class="summary-card">
+                  <span class="number">${totalMedicines}</span>
+                  <div class="label">Total Medicines Distributed</div>
+                </div>
+                <div class="summary-card">
+                  <span class="number">${totalMales + totalFemales}</span>
+                  <div class="label">Total Employees</div>
+                </div>
+                <div class="summary-card">
+                  <span class="number">${totalMaleComplaints + totalFemaleComplaints}</span>
+                  <div class="label">Total Health Complaints</div>
+                </div>
+                <div class="summary-card">
+                  <span class="number">${totalMales}</span>
+                  <div class="label">Male Employees</div>
+                </div>
+                <div class="summary-card">
+                  <span class="number">${totalFemales}</span>
+                  <div class="label">Female Employees</div>
+                </div>
+                <div class="summary-card">
+                  <span class="number">${monthNames[selectedMonth]}</span>
+                  <div class="label">Report Period</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Medicine Distribution -->
+            <div class="section">
+              <div class="section-title">Medicine Distribution</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 70%">Medicine Name</th>
+                    <th style="width: 30%; text-align: right;">Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${medicineData.map(item => `
+                    <tr>
+                      <td>${item.medicineName}</td>
+                      <td style="text-align: right;">${item.count}</td>
+                    </tr>
+                  `).join('')}
+                  <tr class="total-row">
+                    <td>Total</td>
+                    <td style="text-align: right;">${totalMedicines}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Health Complaints by Gender -->
+            <div class="section">
+              <div class="section-title">Health Complaints by Gender</div>
+              <div class="two-column">
+                <div>
+                  <h4 style="margin-top: 0; color: #3182ce;">Male Complaints</h4>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Complaint</th>
+                        <th style="text-align: right;">Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${maleComplaintsData.map(item => `
+                        <tr>
+                          <td>${item.complaint}</td>
+                          <td style="text-align: right;">${item.count}</td>
+                        </tr>
+                      `).join('')}
+                      <tr class="total-row">
+                        <td>Total</td>
+                        <td style="text-align: right;">${totalMaleComplaints}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div>
+                  <h4 style="margin-top: 0; color: #3182ce;">Female Complaints</h4>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Complaint</th>
+                        <th style="text-align: right;">Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${femaleComplaintsData.map(item => `
+                        <tr>
+                          <td>${item.complaint}</td>
+                          <td style="text-align: right;">${item.count}</td>
+                        </tr>
+                      `).join('')}
+                      <tr class="total-row">
+                        <td>Total</td>
+                        <td style="text-align: right;">${totalFemaleComplaints}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Age Distribution -->
+            <div class="section">
+              <div class="section-title">Age Distribution by Gender</div>
+              <div class="two-column">
+                <div>
+                  <h4 style="margin-top: 0; color: #3182ce;">Male Age Brackets</h4>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Age Range</th>
+                        <th style="text-align: right;">Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${maleAgeBracketData.map(item => `
+                        <tr>
+                          <td>${item.bracket}</td>
+                          <td style="text-align: right;">${item.count}</td>
+                        </tr>
+                      `).join('')}
+                      <tr class="total-row">
+                        <td>Total</td>
+                        <td style="text-align: right;">${totalMales}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div>
+                  <h4 style="margin-top: 0; color: #3182ce;">Female Age Brackets</h4>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Age Range</th>
+                        <th style="text-align: right;">Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${femaleAgeBracketData.map(item => `
+                        <tr>
+                          <td>${item.bracket}</td>
+                          <td style="text-align: right;">${item.count}</td>
+                        </tr>
+                      `).join('')}
+                      <tr class="total-row">
+                        <td>Total</td>
+                        <td style="text-align: right;">${totalFemales}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      // Write the content to the print window and trigger the print dialog
+      printWindow.document.open();
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+
+      // Wait a bit for the content to load properly before printing
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    };
+
+    // Handle loading error
+    img.onerror = () => {
+      console.error("Error loading logo for printing");
+      // Fallback to printing without logo - you can implement this if needed
+      alert("Error loading logo. Please try again.");
+    };
   };
 
   return (
@@ -450,8 +798,23 @@ const Reports = () => {
                 </button>
 
                 <button
+                  onClick={handlePrint}
+                  style={
+                    isPrintHovered
+                      ? { ...styles.buttonPrimary, backgroundColor: "#2563eb" }
+                      : styles.buttonPrimary
+                  }
+                  onMouseEnter={() => setIsPrintHovered(true)}
+                  onMouseLeave={() => setIsPrintHovered(false)}
+                  aria-label="Print reports"
+                >
+                  <Printer size={16} style={{ marginRight: 8 }} />
+                  <span>Print Reports</span>
+                </button>
+
+                <button
                   onClick={exportData}
-                  style={styles.buttonPrimary}
+                  style={styles.buttonSecondary}
                   aria-label="Export data as CSV"
                 >
                   <Download size={16} style={{ marginRight: 8 }} />
@@ -872,21 +1235,21 @@ const Reports = () => {
                   )}
                 </div>
                 <div style={styles.summaryBox}>
-                  Total Male Users:{" "}
+                  Total Male Employees:{" "}
                   {maleAgeBracketData.reduce(
                     (sum, item) => sum + item.count,
                     0
                   )}
                 </div>
                 <div style={styles.summaryBox}>
-                  Total Female Users:{" "}
+                  Total Female Employees:{" "}
                   {femaleAgeBracketData.reduce(
                     (sum, item) => sum + item.count,
                     0
                   )}
                 </div>
                 <div style={styles.summaryBox}>
-                  Total Users:{" "}
+                  Total Employees:{" "}
                   {maleAgeBracketData.reduce(
                     (sum, item) => sum + item.count,
                     0

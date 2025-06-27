@@ -955,7 +955,7 @@ const ManageUser = () => {
 
   return (
     <Sidebar>
-      <ToastContainer position="top-right" autoClose={2000} />
+      <ToastContainer position="top-right" autoClose={10000} />
       <div className="user-container">
         <div className="dashboard-header">
           <h1>Manage User Page</h1>
